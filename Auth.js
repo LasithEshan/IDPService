@@ -11,6 +11,7 @@ const client_credentials = client + ':' + client_pass
 const token = Buffer.from(client_credentials).toString('base64');
 const queryString = require('querystring');
 const request = require('request');
+let curentToken = null;
 
 // router.use(cors({${baseURI}/protocol/openid-connect/token
 //     credentials: true,
@@ -19,37 +20,46 @@ const request = require('request');
 
 router.use('*', (req, res, next) => {
 
-    let data = queryString.stringify({
-        grant_type: 'client_credentials'
-    });
+  let data = queryString.stringify({
+    grant_type: 'client_credentials'
+  });
 
-    console.log(token);
+  console.log(token);
 
 
-var options = { method: 'POST',
-  url: 'http://localhost:8080/auth/realms/dev/protocol/openid-connect/token',
-  headers: 
-   {
+  var options = {
+    method: 'POST',
+    url: 'http://localhost:8080/auth/realms/dev/protocol/openid-connect/token',
+    headers: {
 
-     'cache-control': 'no-cache',
-     Authorization: 'Basic cmVhbG0tbWFuYWdlbWVudDphNGZhMzQzMS03MzA4LTRmNDUtOWJiOC1mZWNmODU3NDk2NzA=',
-     'Content-Type': 'application/x-www-form-urlencoded' }
-     ,
-  form: { grant_type: 'client_credentials', undefined: undefined } };
+      'cache-control': 'no-cache',
+      Authorization: 'Basic cmVhbG0tbWFuYWdlbWVudDphNGZhMzQzMS03MzA4LTRmNDUtOWJiOC1mZWNmODU3NDk2NzA=',
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    form: {
+      grant_type: 'client_credentials',
+      undefined: undefined
+    }
+  };
 
-request(options, function (error, response, body) {
-  if (error) throw new Error(error);
+  request(options, function (error, response, body) {
 
-//   AUTH_TOKEN = body.
+    //TODO check for the token timestamp and only take the token again if expired.or else use the existing token
+    if (error) throw new Error(error);
+
+    //   AUTH_TOKEN = body.
     // res.status(response.statusCode).send(response.statusMessage);
     const parsedBody = JSON.parse(body);
     // console.log(body);
     // console.log(parsedBody.access_token);
+    curentToken = parsedBody.access_token;
     req.AUTH_TOKEN = parsedBody.access_token;
-    return next('router');
-    
 
-});
+    return next('router');
+
+
+  });
+
 
 })
 
@@ -58,7 +68,7 @@ request(options, function (error, response, body) {
 //     router
 // })
 module.exports = {
-    router,
-    AUTH_TOKEN
+  router,
+  AUTH_TOKEN
 
 }
