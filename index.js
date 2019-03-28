@@ -65,8 +65,11 @@ app.post('/users', (req, res) => {
     if (roles.includes(constants.ROLE_INPUTTER)) {
         //input the user to the database
         logger.info(decoded);
-        queries.insertUser(req.body.username, req.body.email, decoded.preferred_username, 0);
-        res.sendStatus(201);
+        queries.insertUser(req.body.username, req.body.email, decoded.preferred_username, 0, 'CREATE', 0)
+        .then(result => {
+            res.status(201).send(result)
+        });
+        
 
 
     } else {
@@ -83,7 +86,7 @@ app.post('/users/auth', (req, res) => {
     let creator = (new String(req.body.creator)).trim();
 
     logger.info(tokenUsername);
-    logger.info(creator)
+    logger.info(creator);
     // logger.info(decoded);
     logger.info(tokenUsername !=  creator);
     // console.log(req.AUTH_TOKEN);

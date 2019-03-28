@@ -1,21 +1,48 @@
 const db = require('oracledb');
 db.outFormat = db.OBJECT;
-let result = null;
+// let result = null;
 
-async function insertUser(username, email, creator, id) {
+
+//create connection
+function createConnection() {
     let connection;
+    connection = db.getConnection({
+        user: 'keycloak_svc',
+        password: 'keycloak123',
+        connectString: '35.240.199.189:1521/xe'
+    });
+    return connection;
+}
+
+
+
+//user insert query
+async function insertUser(username, email, creator, id, task, state) {
+    let connection;
+    let result;
     try {
-        connection = await db.getConnection({
-            user: 'keycloak_service',
-            password: 'keycloak123',
-            connectString: '35.240.185.133:1521/xe'
-        });
-    
-        let result = await connection.execute(
+
+        connection =await createConnection();
+
+        let insertResult = await connection.execute(
             `insert into users values('${username}', '${email}', '${creator}', '${id}')`
         );
-        console.log(result);
+
+        let getrecord = await connection.execute(
+            `select id from users where username='${username}'`
+        );
+
+        let queriedID = getrecord.rows[0].ID;
         
+        let insertAuthTask = await connection.execute(
+            `insert into auth_tasks values(${queriedID}, '${task}', '${creator}', ${state})`
+        );
+
+        result = insertAuthTask;
+
+
+
+
     } catch (err) {
         console.log(err);
     } finally {
@@ -23,25 +50,23 @@ async function insertUser(username, email, creator, id) {
             try {
                 // return result;
                 await connection.close();
-                
+
             } catch (err) {
                 console.log(err)
             }
         }
     }
 
-
+    return result;
 
 }
+
+
 
 async function getAllUsers() {
     let connection;
     try {
-        connection = await db.getConnection({
-            user: 'keycloak_service',
-            password: 'keycloak123',
-            connectString: '35.240.185.133:1521/xe'
-        });
+        connection = await createConnection();
 
         let result = await connection.execute(
             `select * from users`
@@ -59,24 +84,22 @@ async function getAllUsers() {
             }
         }
     }
+    return result;
 }
 
-async function deleteUser(id){
+
+async function deleteUser(id) {
     let connection;
-    try{
-        connection = await db.getConnection({
-            user: 'keycloak_service',
-            password: 'keycloak123',
-            connectString: '35.240.185.133:1521/xe'
-        });
+    try {
+        connection = createConnection();
 
         let result = await connection.execute(
             `delete from users where id=${id}`
         )
-    } catch (err){
+    } catch (err) {
         console.log(err);
     } finally {
-        if(connection) {
+        if (connection) {
             try {
                 await connection.close();
             } catch (err) {
@@ -91,5 +114,3 @@ module.exports = {
     getAllUsers,
     deleteUser
 };
-
-
