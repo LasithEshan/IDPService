@@ -41,19 +41,56 @@ app.use("*", tokenAuth);
 
 app.get("/users", (req, res) => {
   //TODO find a way to get the set of results of the function to here
-  let result = queries.getAllUsers().then(result => {
-    res.status(200).send(result.rows);
-  });
+  if(req.headers.token == null){res.status(400).send({Error : "No user token provided!"})};
+
+  let decoded = jwt.decode(req.headers.token);
+  let roles = decoded.realm_access.roles;
+
+  if(roles.includes(constants.ROLE_VIEWUSERS)){
+    axios.get(`${baseURI}/users`, {
+      headers : {
+        Authorization: "Bearer " + req.AUTH_TOKEN
+      }
+    }).catch(err => {
+      logger.error(err);
+    }).then(result => {
+      res.status(200).send(result.data);
+      logger.info('HTTP GET /users ------> OK')
+    })
+  }else{
+    res.sendStatus(401);
+  }
+ 
 });
 
 
 
-app.get("/auth", (req, res) => {
-  console.log(req);
+app.get("/authTasks", (req, res) => {
+  if(req.headers.token == null){res.status(400).send({Error : "No user token provided!"})};
+
+  let decoded = jwt.decode(req.headers.token);
+  let roles = decoded.realm_access.roles;
+
+  if(roles.includes(constants.ROLE_AUTHORIZER)){
+    queries.getAllUsers()
+    .catch(err => {
+      logger.error(err)
+    })
+    .then(result => {
+      res.send(result)
+      logger.info('HTTP GET /authTasks ------> OK')
+    })
+  }else{
+    res.sendStatus(401);
+  }
+  
 });
 
 //User creation process in the temporary database
 app.post("/users", (req, res) => {
+
+  if(req.headers.token == null){res.status(400).send({Error : "No user token provided!"})};
+
   let decoded = jwt.decode(req.headers.token);
   let roles = decoded.realm_access.roles;
 
@@ -95,6 +132,8 @@ app.post("/users", (req, res) => {
 
 
 app.post("/users/edit", (req, res) => {
+  if(req.headers.token == null){res.status(400).send({Error : "No user token provided!"})};
+
   let decoded = jwt.decode(req.headers.token);
   let roles = decoded.realm_access.roles;
   
@@ -137,6 +176,8 @@ app.post("/users/edit", (req, res) => {
 
 
 app.post("/users/auth", (req, res) => {
+  if(req.headers.token == null){res.status(400).send({Error : "No user token provided!"})};
+
   //TODO- have to send a OTP to the user after creating the user in keycloak
   let decoded = jwt.decode(req.headers.token);
   let roles = decoded.realm_access.roles;
@@ -207,7 +248,46 @@ app.post("/users/auth", (req, res) => {
     }
 
   }else if(auth_type === constants.EDIT_USER){
+    if (roles.includes(constants.ROLE_AUTHORIZER) && tokenUsername !== creator){
 
+      let keycloakID;
+      axios.get(`${baseURI}/users?username=${req.body.username}`,{
+        headers: {
+          Authorization: "Bearer " + req.AUTH_TOKEN
+        }
+      }).catch(err => {
+        logger.error(err);
+      }).then(result => {
+        keycloakID = result.data[0].id;
+        //removed updating password since password reset has been not named as dual control
+
+        axios.put(`${baseURI}/users/${keycloakID}`,{
+          username: req.body.username,
+          email: req.body.email,
+          enabled: req.body.userStatus,
+          attributes:{
+            'epf_number': req.body.epf_number,
+            'branch' : req.body.branch,
+            'department' :req.body.department,
+            'mobile_number' : req.body.mobile_number,
+            'start_date' : req.body.start_date,
+            'end_date' : req.body.end_date
+          },
+          firstName : req.body.name,
+          realmRoles: req.body.userRole
+
+        },{
+          headers: {
+            Authorization: "Bearer " + req.AUTH_TOKEN
+          }
+        }).catch(err => {
+          logger.error(err);
+        }).then(result => {
+          queries.deleteUser(req.body.id);
+          res.sendStatus(200)
+        })
+      })
+    }
   }
 
  

@@ -1,4 +1,5 @@
 const db = require("oracledb");
+const constants = require('./constants');
 db.outFormat = db.OBJECT;
 // let result = null;
 
@@ -6,9 +7,9 @@ db.outFormat = db.OBJECT;
 function createConnection() {
   let connection;
   connection = db.getConnection({
-    user: "keycloak_svc",
-    password: "keycloak123",
-    connectString: "35.240.199.189:1521/xe"
+    user: constants.DB_USER,
+    password: constants.DB_PASSWORD,
+    connectString: constants.DB_CONN_STR
   });
   return connection;
 }
@@ -109,8 +110,27 @@ async function deleteUser(id) {
   }
 }
 
+async function deleteUserByUsername(username){
+  let connection;
+  try {
+    connection = await createConnection();
+
+    let result = await connection.execute(`delete from users where username=${username}`);
+  } catch (err) {
+    console.log(err);
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.log(err);
+      }
+    }
+  }
+}
+
 module.exports = {
   insertUser,
   getAllUsers,
-  deleteUser
+  deleteUserByUsername
 };
